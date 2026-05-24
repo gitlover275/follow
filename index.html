@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="流"/>
+<meta name="theme-color" id="theme-color-meta" content="#ffffff"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
+<title>流 · Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#ffffff;--bg2:#f5f5f5;--bg3:#ebebeb;
+  --text:#000000;--text2:#666666;--text3:#999999;
+  --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.18);
+  --bubble-self:#000000;--bubble-self-text:#ffffff;
+  --bubble-wait:#f0f0f0;--bubble-wait-text:#000000;--bubble-wait-border:rgba(0,0,0,0.08);
+  --add-btn:#000000;--add-btn-text:#ffffff;
+  --modal-bg:rgba(0,0,0,0.45);--danger:#e53935;--safe:#1a1a1a;
+  --radius:18px;--tr:0.2s ease;
+}
+[data-theme="dark"] {
+  --bg:#0a0a0a;--bg2:#1a1a1a;--bg3:#252525;
+  --text:#ffffff;--text2:#aaaaaa;--text3:#666666;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  --bubble-self:#ffffff;--bubble-self-text:#000000;
+  --bubble-wait:#1e1e1e;--bubble-wait-text:#ffffff;--bubble-wait-border:rgba(255,255,255,0.08);
+  --add-btn:#ffffff;--add-btn-text:#000000;
+  --modal-bg:rgba(0,0,0,0.7);--danger:#ff5252;--safe:#e0e0e0;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);transition:background var(--tr),color var(--tr);}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg);transition:transform 0.32s cubic-bezier(.4,0,.2,1),opacity 0.32s ease;}
+.screen.hidden{transform:translateX(100%);opacity:0;pointer-events:none;}
+.screen.slide-left{transform:translateX(-30%);opacity:0;pointer-events:none;}
+
+.safe-top{height:env(safe-area-inset-top,12px);}
+.safe-bottom{height:env(safe-area-inset-bottom,8px);}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:0.5px solid var(--border);flex-shrink:0;background:var(--bg);}
+.topbar-title{font-size:17px;font-weight:500;color:var(--text);flex:1;}
+.icon-btn{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;flex-shrink:0;}
+.icon-btn:active{background:var(--bg2);}
+
+.search-wrap{padding:10px 16px;flex-shrink:0;}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:12px;padding:9px 14px;}
+.search-box input{flex:1;background:none;border:none;outline:none;font-size:15px;color:var(--text);font-family:'Noto Sans SC',sans-serif;}
+.search-box input::placeholder{color:var(--text3);}
+
+.flow-list{flex:1;overflow-y:auto;padding:8px 16px 100px;}
+.flow-item{background:var(--bg);border:0.5px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:background var(--tr),transform 0.1s;position:relative;overflow:hidden;}
+.flow-item:active{background:var(--bg2);transform:scale(0.99);}
+.flow-item-title{font-size:15px;font-weight:500;color:var(--text);margin-bottom:5px;}
+.flow-item-last{font-size:13px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:48px;}
+.flow-item-time{font-size:11px;color:var(--text3);margin-top:5px;}
+.flow-item-count{position:absolute;right:16px;top:16px;font-size:11px;color:var(--text3);background:var(--bg2);padding:3px 8px;border-radius:20px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:12px;color:var(--text3);}
+.empty-state .big{font-size:48px;opacity:0.3;}
+.empty-state p{font-size:14px;}
+
+.fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;background:var(--add-btn);color:var(--add-btn-text);display:flex;align-items:center;justify-content:center;font-size:26px;border:none;cursor:pointer;box-shadow:0 2px 16px rgba(0,0,0,0.18);transition:background var(--tr),color var(--tr),transform 0.1s;z-index:50;}
+.fab:active{transform:translateX(-50%) scale(0.94);}
+
+.detail-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:0.5px solid var(--border);flex-shrink:0;background:var(--bg);}
+.detail-topbar-title{font-size:16px;font-weight:500;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.bubble-feed{flex:1;overflow-y:auto;padding:14px 14px 0;display:flex;flex-direction:column;gap:4px;}
+.ts-label{font-size:11px;color:var(--text3);text-align:center;padding:6px 0 2px;}
+
+.row-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.row-left{display:flex;flex-direction:column;align-items:flex-start;gap:2px;}
+
+.bubble-wrap{display:flex;flex-direction:column;max-width:78%;}
+.row-right .bubble-wrap{align-items:flex-end;}
+.row-left .bubble-wrap{align-items:flex-start;}
+
+.bubble{padding:9px 13px;font-size:14px;line-height:1.55;word-break:break-word;cursor:pointer;transition:opacity 0.15s;user-select:none;}
+.bubble:active{opacity:0.75;}
+.bubble-self{background:var(--bubble-self);color:var(--bubble-self-text);border-radius:16px 4px 16px 16px;}
+.bubble-wait{background:var(--bubble-wait);color:var(--bubble-wait-text);border-radius:4px 16px 16px 16px;border:0.5px solid var(--bubble-wait-border);}
+
+.edited-badge{font-size:10px;color:var(--text3);cursor:pointer;padding:2px 0 4px;text-decoration:underline;text-underline-offset:2px;width:fit-content;}
+.edited-badge:hover{color:var(--text2);}
+
+.undo-row{display:flex;align-items:center;gap:8px;padding:4px 0;}
+.undo-row.right{justify-content:flex-end;}
+.undo-row.left{justify-content:flex-start;}
+.undo-text{font-size:12px;color:var(--text3);}
+.undo-btn{font-size:12px;color:var(--text);text-decoration:underline;cursor:pointer;border:none;background:none;font-family:'Noto Sans SC',sans-serif;padding:0;}
+
+.insert-zone{display:flex;align-items:center;gap:6px;padding:3px 0;opacity:0;transition:opacity 0.2s;cursor:pointer;}
+.insert-zone:hover,.insert-zone:focus{opacity:1;}
+.insert-zone .iline{flex:1;height:0.5px;background:var(--border2);}
+.insert-zone .ibtn{width:20px;height:20px;border-radius:50%;border:0.5px solid var(--border2);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);flex-shrink:0;}
+.insert-zone:hover .iline,.insert-zone:focus .iline{background:var(--text);}
+.insert-zone:hover .ibtn,.insert-zone:focus .ibtn{border-color:var(--text);color:var(--text);}
+
+.bottom-input{display:flex;align-items:flex-end;gap:8px;padding:10px 14px;border-top:0.5px solid var(--border);flex-shrink:0;background:var(--bg);}
+.input-wrap{flex:1;background:var(--bg2);border-radius:20px;padding:9px 14px;display:flex;align-items:center;gap:8px;}
+.input-wrap textarea{flex:1;background:none;border:none;outline:none;resize:none;font-size:14px;color:var(--text);line-height:1.4;font-family:'Noto Sans SC',sans-serif;max-height:100px;overflow-y:auto;}
+.input-wrap textarea::placeholder{color:var(--text3);}
+.type-toggle{flex-shrink:0;font-size:11px;color:var(--text3);cursor:pointer;border:none;background:none;font-family:'Noto Sans SC',sans-serif;padding:0;white-space:nowrap;}
+.send-btn{width:38px;height:38px;border-radius:50%;background:var(--add-btn);color:var(--add-btn-text);display:flex;align-items:center;justify-content:center;font-size:18px;border:none;cursor:pointer;flex-shrink:0;transition:opacity 0.15s,background var(--tr);}
+.send-btn:disabled{opacity:0.35;}
+
+.export-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:0.5px solid var(--border2);background:none;color:var(--text2);font-size:13px;cursor:pointer;font-family:'Noto Sans SC',sans-serif;transition:background var(--tr);}
+.export-btn:active{background:var(--bg2);}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:var(--modal-bg);z-index:100;display:flex;align-items:flex-end;opacity:0;transition:opacity 0.25s;pointer-events:none;}
+.overlay.active{opacity:1;pointer-events:all;}
+.sheet{width:100%;background:var(--bg);border-radius:24px 24px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform 0.3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;gap:12px;}
+.overlay.active .sheet{transform:translateY(0);}
+.sheet-handle{width:36px;height:4px;background:var(--bg3);border-radius:2px;margin:0 auto 4px;}
+.sheet-title{font-size:15px;font-weight:500;color:var(--text);text-align:center;}
+.sheet-sub{font-size:12px;color:var(--text3);text-align:center;margin-top:-6px;}
+
+.type-row{display:flex;gap:8px;}
+.type-pill{flex:1;padding:8px 0;border-radius:24px;border:0.5px solid var(--border2);font-size:13px;color:var(--text2);background:var(--bg);cursor:pointer;text-align:center;font-family:'Noto Sans SC',sans-serif;transition:background var(--tr),color var(--tr);}
+.type-pill.sel{background:var(--add-btn);color:var(--add-btn-text);border-color:var(--add-btn);}
+
+.sheet-textarea{background:var(--bg2);border-radius:12px;padding:10px 12px;font-size:14px;color:var(--text);border:none;outline:none;resize:none;font-family:'Noto Sans SC',sans-serif;line-height:1.55;width:100%;}
+.sheet-textarea::placeholder{color:var(--text3);}
+
+.action-row{display:flex;gap:8px;}
+.btn{flex:1;padding:11px;border-radius:24px;font-size:14px;cursor:pointer;font-family:'Noto Sans SC',sans-serif;border:0.5px solid var(--border2);background:var(--bg);color:var(--text2);transition:background var(--tr);}
+.btn:active{background:var(--bg2);}
+.btn-primary{background:var(--add-btn);color:var(--add-btn-text);border-color:var(--add-btn);}
+.btn-primary:active{opacity:0.85;}
+.btn-danger{color:var(--danger);border-color:var(--danger);}
+.btn-icon{flex:0;padding:11px 14px;}
+
+/* history sheet */
+.history-list{display:flex;flex-direction:column;gap:0;max-height:50vh;overflow-y:auto;}
+.history-item{padding:12px 0;border-bottom:0.5px solid var(--border);}
+.history-item:last-child{border-bottom:none;}
+.history-time{font-size:11px;color:var(--text3);margin-bottom:4px;}
+.history-content{font-size:14px;color:var(--text);line-height:1.5;}
+.history-item.current .history-content{font-weight:500;}
+.history-current-badge{display:inline-block;font-size:10px;color:var(--text3);border:0.5px solid var(--border2);border-radius:6px;padding:1px 5px;margin-left:6px;vertical-align:middle;}
+
+/* ctx menu */
+.ctx-menu{position:fixed;z-index:200;background:var(--bg);border:0.5px solid var(--border2);border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.18);min-width:130px;transform:scale(0.9);opacity:0;transition:transform 0.15s,opacity 0.15s;pointer-events:none;}
+.ctx-menu.active{transform:scale(1);opacity:1;pointer-events:all;}
+.ctx-item{padding:12px 16px;font-size:14px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border);}
+.ctx-item:last-child{border-bottom:none;}
+.ctx-item:active{background:var(--bg2);}
+.ctx-item.danger{color:var(--danger);}
+
+/* settings */
+.settings-list{flex:1;overflow-y:auto;padding:16px;}
+.setting-group{margin-bottom:24px;}
+.setting-group-title{font-size:12px;color:var(--text3);margin-bottom:10px;padding-left:4px;text-transform:uppercase;letter-spacing:0.05em;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg2);border-radius:4px;margin-bottom:2px;cursor:pointer;}
+.setting-row:first-child{border-radius:12px 12px 4px 4px;}
+.setting-row:last-child{border-radius:4px 4px 12px 12px;}
+.setting-row:only-child{border-radius:12px;}
+.setting-label{font-size:15px;color:var(--text);}
+.setting-value{font-size:14px;color:var(--text3);}
+.toggle{width:44px;height:26px;border-radius:13px;background:var(--bg3);position:relative;transition:background 0.2s;cursor:pointer;flex-shrink:0;border:none;}
+.toggle.on{background:#000;}
+[data-theme="dark"] .toggle.on{background:#fff;}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);}
+[data-theme="dark"] .toggle.on::after{background:#000;}
+.toggle.on::after{transform:translateX(18px);}
+
+.new-flow-input{background:var(--bg2);border-radius:12px;padding:14px;font-size:16px;color:var(--text);border:none;outline:none;width:100%;font-family:'Noto Sans SC',sans-serif;}
+.new-flow-input::placeholder{color:var(--text3);}
+
+.toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(20px);background:var(--safe);color:var(--add-btn-text);padding:9px 18px;border-radius:20px;font-size:13px;opacity:0;transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:300;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="screen" id="screen-home">
+  <div class="safe-top"></div>
+  <div class="topbar">
+    <span class="topbar-title">流</span>
+    <button class="icon-btn" onclick="openSettings()">⚙</button>
+  </div>
+  <div class="search-wrap">
+    <div class="search-box">
+      <span style="color:var(--text3);font-size:16px">⌕</span>
+      <input type="text" placeholder="搜索" id="search-input" oninput="renderFlowList()"/>
+    </div>
+  </div>
+  <div class="flow-list" id="flow-list"></div>
+  <button class="fab" onclick="openNewFlow()">＋</button>
+</div>
+
+<!-- DETAIL -->
+<div class="screen hidden" id="screen-detail">
+  <div class="safe-top"></div>
+  <div class="detail-topbar">
+    <button class="icon-btn" onclick="goHome()">←</button>
+    <div class="detail-topbar-title" id="detail-title"></div>
+    <button class="export-btn" onclick="exportFlow()">↓ 导出</button>
+  </div>
+  <div class="bubble-feed" id="bubble-feed"></div>
+  <div class="bottom-input">
+    <div class="input-wrap">
+      <textarea id="new-bubble-text" placeholder="记录进展…" rows="1"
+        oninput="autoResize(this)"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendBubble();}"></textarea>
+      <button class="type-toggle" id="type-toggle-btn" onclick="toggleInputType()">→ 自己做的</button>
+    </div>
+    <button class="send-btn" id="send-btn" onclick="sendBubble()" disabled>↑</button>
+  </div>
+  <div class="safe-bottom"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="screen hidden" id="screen-settings">
+  <div class="safe-top"></div>
+  <div class="topbar">
+    <button class="icon-btn" onclick="closeSettings()">←</button>
+    <span class="topbar-title">设置</span>
+  </div>
+  <div class="settings-list">
+    <div class="setting-group">
+      <div class="setting-group-title">外观</div>
+      <div class="setting-row" onclick="toggleTheme()">
+        <span class="setting-label">深色模式</span>
+        <button class="toggle" id="dark-toggle"></button>
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="setting-group-title">数据</div>
+      <div class="setting-row" onclick="exportAll()">
+        <span class="setting-label">导出全部数据</span>
+        <span class="setting-value">JSON ↓</span>
+      </div>
+      <div class="setting-row" onclick="importData()">
+        <span class="setting-label">导入数据</span>
+        <span class="setting-value">JSON ↑</span>
+      </div>
+      <div class="setting-row" style="cursor:default">
+        <span class="setting-label">存储位置</span>
+        <span class="setting-value">本地浏览器</span>
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="setting-group-title">关于</div>
+      <div class="setting-row" style="cursor:default">
+        <span class="setting-label">数据版本</span>
+        <span class="setting-value">schema v2</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BUBBLE EDIT SHEET (no time drum) -->
+<div class="overlay" id="bubble-overlay" onclick="closeBubbleSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="bsheet-title">编辑内容</div>
+    <div class="sheet-sub" id="bsheet-sub"></div>
+    <div class="type-row">
+      <button class="type-pill sel" id="tpill-right" onclick="setSheetType('right')">→ 自己做的</button>
+      <button class="type-pill" id="tpill-left" onclick="setSheetType('left')">← 等待中</button>
+    </div>
+    <textarea class="sheet-textarea" id="bsheet-text" rows="4" placeholder="记录这条泡泡…"></textarea>
+    <div class="action-row">
+      <button class="btn" onclick="closeBubbleSheet()">取消</button>
+      <button class="btn btn-danger btn-icon" id="bsheet-delete-btn" onclick="sheetDelete()" style="display:none">🗑</button>
+      <button class="btn btn-primary" onclick="sheetConfirm()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY SHEET -->
+<div class="overlay" id="history-overlay" onclick="closeHistorySheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">修改历史</div>
+    <div class="sheet-sub" id="hsheet-sub"></div>
+    <div class="history-list" id="history-list"></div>
+    <button class="btn" onclick="closeHistorySheet()">关闭</button>
+  </div>
+</div>
+
+<!-- NEW FLOW SHEET -->
+<div class="overlay" id="newflow-overlay" onclick="closeNewFlow(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">新建流</div>
+    <input class="new-flow-input" id="newflow-input" type="text" placeholder="给这个流起个名字…"
+      onkeydown="if(event.key==='Enter'){createFlow();}"/>
+    <div class="action-row">
+      <button class="btn" onclick="closeNewFlow()">取消</button>
+      <button class="btn btn-primary" onclick="createFlow()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- CTX MENU -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" onclick="ctxEdit()">✎ 编辑内容</div>
+  <div class="ctx-item danger" onclick="ctxDelete()">🗑 删除</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleImport(event)"/>
+
+<script>
+const SCHEMA_VERSION = 2;
+const LS_FLOWS = 'flow_flows_v2';
+const LS_THEME = 'flow_theme';
+
+let flows = [];
+let currentFlowId = null;
+let sheetMode = 'insert'; // 'insert' | 'edit'
+let editBubbleId = null;
+let sheetType = 'right';
+let inputType = 'right';
+let ctxBubbleId = null;
+let undoTimers = {};
+
+// ── PERSIST ──
+function save(){
+  const payload = { schema_version: SCHEMA_VERSION, exported_at: new Date().toISOString(), flows };
+  localStorage.setItem(LS_FLOWS, JSON.stringify(payload));
+}
+
+function load(){
+  try {
+    const raw = localStorage.getItem(LS_FLOWS);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      // schema migration
+      if(Array.isArray(parsed)){
+        // v1: raw array
+        flows = migrateV1(parsed);
+      } else {
+        flows = parsed.flows || [];
+      }
+    }
+  } catch(e){ flows = []; }
+
+  const theme = localStorage.getItem(LS_THEME) || 'light';
+  if(theme === 'dark') setTheme(true, false);
+}
+
+function migrateV1(arr){
+  // v1 bubbles had ts as editable; convert to created_at=ts, history=[]
+  return arr.map(f => ({
+    ...f,
+    bubbles: (f.bubbles||[]).map(b => ({
+      ...b,
+      created_at: b.created_at || b.ts,
+      history: b.history || [],
+      deleted: b.deleted || false
+    }))
+  }));
+}
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ── THEME ──
+function setTheme(dark, persist=true){
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('theme-color-meta').content = dark ? '#0a0a0a' : '#ffffff';
+  const t = document.getElementById('dark-toggle');
+  if(t) t.classList.toggle('on', dark);
+  if(persist) localStorage.setItem(LS_THEME, dark ? 'dark' : 'light');
+}
+function toggleTheme(){
+  setTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
+}
+
+// ── SCREENS ──
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('hidden','slide-left');
+    if(s.id !== id) s.classList.add(s.id === 'screen-home' ? 'slide-left' : 'hidden');
+  });
+}
+function goHome(){ showScreen('screen-home'); currentFlowId = null; renderFlowList(); }
+function openSettings(){ showScreen('screen-settings'); }
+function closeSettings(){ showScreen('screen-home'); renderFlowList(); }
+
+// ── FLOW LIST ──
+function renderFlowList(){
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  const list = document.getElementById('flow-list');
+  const filtered = flows.filter(f =>
+    f.name.toLowerCase().includes(q) ||
+    (f.bubbles||[]).some(b => b.text.toLowerCase().includes(q))
+  );
+  if(!filtered.length){
+    list.innerHTML = `<div class="empty-state"><div class="big">〇</div><p>${q ? '没有找到相关内容' : '还没有流，点下方 ＋ 开始'}</p></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(f => {
+    const bs = (f.bubbles||[]).filter(b=>!b.deleted).sort((a,b)=>a.created_at - b.created_at);
+    const last = bs[bs.length-1];
+    const ts = last ? fmtTs(last.created_at) : '';
+    const preview = last ? (last.type==='right' ? '→ ' : '← ') + last.text : '空';
+    return `<div class="flow-item" onclick="openFlow('${f.id}')">
+      <div class="flow-item-title">${esc(f.name)}</div>
+      <div class="flow-item-last">${esc(preview)}</div>
+      <div class="flow-item-time">${ts}</div>
+      <div class="flow-item-count">${bs.length} 条</div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── NEW FLOW ──
+function openNewFlow(){
+  document.getElementById('newflow-overlay').classList.add('active');
+  setTimeout(() => document.getElementById('newflow-input').focus(), 300);
+}
+function closeNewFlow(e){
+  if(e && e.target !== document.getElementById('newflow-overlay')) return;
+  document.getElementById('newflow-overlay').classList.remove('active');
+  document.getElementById('newflow-input').value = '';
+}
+function createFlow(){
+  const name = document.getElementById('newflow-input').value.trim();
+  if(!name) return;
+  const f = { id: uid(), name, bubbles: [], created: Date.now() };
+  flows.unshift(f);
+  save();
+  closeNewFlow({ target: document.getElementById('newflow-overlay') });
+  openFlow(f.id);
+}
+
+// ── OPEN FLOW ──
+function openFlow(id){
+  currentFlowId = id;
+  const f = flows.find(x => x.id === id);
+  if(!f) return;
+  document.getElementById('detail-title').textContent = f.name;
+  document.getElementById('new-bubble-text').value = '';
+  updateSendBtn();
+  inputType = 'right';
+  updateInputTypeBtn();
+  showScreen('screen-detail');
+  renderBubbles();
+  setTimeout(() => scrollFeedToBottom(), 50);
+}
+function currentFlow(){ return flows.find(f => f.id === currentFlowId); }
+
+// ── RENDER BUBBLES ──
+function renderBubbles(){
+  const f = currentFlow(); if(!f) return;
+  const feed = document.getElementById('bubble-feed');
+  const bs = [...(f.bubbles||[])].sort((a,b) => a.created_at - b.created_at);
+  let html = '';
+
+  function insertZone(){
+    return `<div class="insert-zone" tabindex="0" onclick="openInsert()" onkeydown="if(event.key==='Enter')openInsert()">
+      <div class="iline"></div><div class="ibtn">＋</div><div class="iline"></div>
+    </div>`;
+  }
+
+  html += insertZone();
+
+  bs.forEach(b => {
+    if(b.deleted){
+      const side = b.type === 'right' ? 'right' : 'left';
+      html += `<div class="undo-row ${side}">
+        <span class="undo-text">已删除</span>
+        <button class="undo-btn" onclick="undoBubble('${b.id}')">撤回</button>
+      </div>`;
+    } else {
+      const edited = b.history && b.history.length > 0;
+      const sideClass = b.type === 'right' ? 'row-right' : 'row-left';
+      const bubbleClass = b.type === 'right' ? 'bubble-self' : 'bubble-wait';
+      html += `<div class="ts-label">${fmtTs(b.created_at)}</div>
+      <div class="${sideClass}">
+        <div class="bubble-wrap">
+          <div class="bubble ${bubbleClass}"
+            data-id="${b.id}"
+            onclick="handleBubbleClick('${b.id}')"
+            oncontextmenu="handleLongPress(event,'${b.id}')"
+            ontouchstart="startLongPress(event,'${b.id}')"
+            ontouchend="cancelLongPress()"
+            ontouchmove="cancelLongPress()"
+          >${esc(b.text)}</div>
+          ${edited ? `<div class="edited-badge" onclick="openHistory('${b.id}')">已编辑 ·  ${b.history.length} 次</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += insertZone();
+  });
+
+  if(!bs.length){
+    html += `<div class="empty-state" style="height:50vh"><div class="big" style="font-size:36px">〇</div><p>点下方输入框开始记录</p></div>`;
+  }
+  html += '<div style="height:10px"></div>';
+  feed.innerHTML = html;
+}
+
+function scrollFeedToBottom(){
+  const feed = document.getElementById('bubble-feed');
+  feed.scrollTop = feed.scrollHeight;
+}
+
+// ── SEND ──
+function sendBubble(){
+  const text = document.getElementById('new-bubble-text').value.trim();
+  if(!text) return;
+  const f = currentFlow(); if(!f) return;
+  const now = Date.now();
+  const b = { id: uid(), created_at: now, type: inputType, text, history: [], deleted: false };
+  f.bubbles.push(b);
+  save();
+  document.getElementById('new-bubble-text').value = '';
+  autoResize(document.getElementById('new-bubble-text'));
+  updateSendBtn();
+  renderBubbles();
+  scrollFeedToBottom();
+}
+
+function updateSendBtn(){
+  document.getElementById('send-btn').disabled = !document.getElementById('new-bubble-text').value.trim();
+}
+function autoResize(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+  updateSendBtn();
+}
+function toggleInputType(){
+  inputType = inputType === 'right' ? 'left' : 'right';
+  updateInputTypeBtn();
+}
+function updateInputTypeBtn(){
+  document.getElementById('type-toggle-btn').textContent = inputType === 'right' ? '→ 自己做的' : '← 等待中';
+}
+
+// ── LONG PRESS ──
+let lpTimer = null;
+function startLongPress(e, id){ lpTimer = setTimeout(() => handleLongPress(e, id), 480); }
+function cancelLongPress(){ clearTimeout(lpTimer); }
+function handleLongPress(e, id){
+  e.preventDefault(); cancelLongPress();
+  ctxBubbleId = id;
+  const menu = document.getElementById('ctx-menu');
+  const rect = e.target.getBoundingClientRect();
+  let top = rect.bottom + 8, left = rect.left;
+  if(top + 120 > window.innerHeight) top = rect.top - 120;
+  if(left + 140 > window.innerWidth) left = window.innerWidth - 150;
+  menu.style.top = top + 'px'; menu.style.left = left + 'px';
+  menu.classList.add('active');
+  setTimeout(() => document.addEventListener('click', dismissCtx, {once:true}), 10);
+}
+function dismissCtx(){ document.getElementById('ctx-menu').classList.remove('active'); }
+function handleBubbleClick(id){
+  if(document.getElementById('ctx-menu').classList.contains('active')){ dismissCtx(); return; }
+  ctxBubbleId = id;
+  openEditBubble(id);
+}
+function ctxEdit(){ dismissCtx(); openEditBubble(ctxBubbleId); }
+function ctxDelete(){ dismissCtx(); deleteBubble(ctxBubbleId); }
+
+// ── DELETE & UNDO ──
+function deleteBubble(id){
+  const f = currentFlow(); if(!f) return;
+  const b = f.bubbles.find(x => x.id === id); if(!b) return;
+  b.deleted = true;
+  save(); renderBubbles();
+  if(undoTimers[id]) clearTimeout(undoTimers[id]);
+  undoTimers[id] = setTimeout(() => {
+    const f2 = currentFlow(); if(!f2) return;
+    const idx = f2.bubbles.findIndex(x => x.id === id);
+    if(idx > -1) f2.bubbles.splice(idx, 1);
+    save(); if(currentFlowId) renderBubbles();
+  }, 5000);
+}
+function undoBubble(id){
+  clearTimeout(undoTimers[id]); delete undoTimers[id];
+  const f = currentFlow(); if(!f) return;
+  const b = f.bubbles.find(x => x.id === id); if(!b) return;
+  b.deleted = false;
+  save(); renderBubbles();
+}
+
+// ── INSERT (no time picker — uses now) ──
+function openInsert(){
+  sheetMode = 'insert';
+  sheetType = 'right';
+  document.getElementById('bsheet-title').textContent = '插入泡泡';
+  document.getElementById('bsheet-sub').textContent = '时间将记录为当前时刻';
+  document.getElementById('bsheet-text').value = '';
+  document.getElementById('bsheet-delete-btn').style.display = 'none';
+  setSheetType('right');
+  document.getElementById('bubble-overlay').classList.add('active');
+  setTimeout(() => document.getElementById('bsheet-text').focus(), 350);
+}
+
+// ── EDIT BUBBLE ──
+function openEditBubble(id){
+  const f = currentFlow(); if(!f) return;
+  const b = f.bubbles.find(x => x.id === id); if(!b) return;
+  sheetMode = 'edit';
+  editBubbleId = id;
+  sheetType = b.type;
+  document.getElementById('bsheet-title').textContent = '编辑内容';
+  document.getElementById('bsheet-sub').textContent = '时间不可修改，修改将记录历史';
+  document.getElementById('bsheet-text').value = b.text;
+  document.getElementById('bsheet-delete-btn').style.display = '';
+  setSheetType(b.type);
+  document.getElementById('bubble-overlay').classList.add('active');
+  setTimeout(() => document.getElementById('bsheet-text').focus(), 350);
+}
+
+function closeBubbleSheet(e){
+  if(e && e.target !== document.getElementById('bubble-overlay')) return;
+  document.getElementById('bubble-overlay').classList.remove('active');
+}
+function setSheetType(t){
+  sheetType = t;
+  document.getElementById('tpill-right').classList.toggle('sel', t === 'right');
+  document.getElementById('tpill-left').classList.toggle('sel', t === 'left');
+}
+function sheetDelete(){
+  closeBubbleSheet({ target: document.getElementById('bubble-overlay') });
+  if(editBubbleId) deleteBubble(editBubbleId);
+}
+function sheetConfirm(){
+  const text = document.getElementById('bsheet-text').value.trim();
+  if(!text){ showToast('请输入内容'); return; }
+  const f = currentFlow(); if(!f) return;
+
+  if(sheetMode === 'insert'){
+    const b = { id: uid(), created_at: Date.now(), type: sheetType, text, history: [], deleted: false };
+    f.bubbles.push(b);
+  } else {
+    const b = f.bubbles.find(x => x.id === editBubbleId); if(!b) return;
+    // only save to history if content actually changed
+    if(b.text !== text || b.type !== sheetType){
+      b.history.push({ at: Date.now(), text: b.text, type: b.type });
+      b.text = text;
+      b.type = sheetType;
+    }
+  }
+
+  f.bubbles.sort((a,b) => a.created_at - b.created_at);
+  save();
+  closeBubbleSheet({ target: document.getElementById('bubble-overlay') });
+  renderBubbles();
+}
+
+// ── HISTORY SHEET ──
+function openHistory(id){
+  const f = currentFlow(); if(!f) return;
+  const b = f.bubbles.find(x => x.id === id); if(!b) return;
+  document.getElementById('hsheet-sub').textContent = '创建于 ' + fmtTs(b.created_at);
+
+  const entries = [
+    ...b.history.map((h,i) => ({ at: h.at, text: h.text, type: h.type, isCurrent: false, label: '第'+(i+1)+'次修改前' })),
+    { at: null, text: b.text, type: b.type, isCurrent: true, label: '当前内容' }
+  ];
+
+  document.getElementById('history-list').innerHTML = entries.map(e => `
+    <div class="history-item ${e.isCurrent ? 'current' : ''}">
+      <div class="history-time">
+        ${e.isCurrent ? '当前内容' : fmtTsFull(e.at)}
+        ${e.isCurrent ? '<span class="history-current-badge">最新</span>' : ''}
+      </div>
+      <div class="history-content">${esc(e.text)}<span style="font-size:11px;color:var(--text3);margin-left:6px">${e.type==='right'?'→':'←'}</span></div>
+    </div>
+  `).join('');
+
+  document.getElementById('history-overlay').classList.add('active');
+}
+function closeHistorySheet(e){
+  if(e && e.target !== document.getElementById('history-overlay')) return;
+  document.getElementById('history-overlay').classList.remove('active');
+}
+
+// ── EXPORT ──
+function exportFlow(){
+  const f = currentFlow(); if(!f) return;
+  const bs = [...(f.bubbles||[])].filter(b=>!b.deleted).sort((a,b)=>a.created_at - b.created_at);
+
+  const lines = bs.map(b => {
+    const t = fmtTimeFull(b.created_at);
+    const tag = b.type === 'right' ? '（自己做的）' : '（等待中）';
+    let line = `${t}  ${b.text}${tag}`;
+    if(b.history && b.history.length > 0){
+      const edits = b.history.map((h,i) =>
+        `        └ 编辑于 ${fmtTimeFull(h.at)}：${h.text}`
+      );
+      line += '\n' + edits.join('\n');
+    }
+    return line;
+  });
+
+  const content = `【${f.name}】\n导出时间：${fmtTsFull(Date.now())}\n\n` + lines.join('\n');
+  const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${f.name}.txt`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('已导出 ' + f.name + '.txt');
+}
+
+function exportAll(){
+  const payload = { schema_version: SCHEMA_VERSION, exported_at: new Date().toISOString(), flows };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = '流-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('全部数据已导出');
+}
+function importData(){ document.getElementById('file-input').click(); }
+function handleImport(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      const data = Array.isArray(parsed) ? migrateV1(parsed) : (parsed.flows || []);
+      flows = data; save(); renderFlowList();
+      showToast('导入成功，共 ' + data.length + ' 个流');
+    } catch(err){ showToast('文件格式有误'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── TIME UTILS ──
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmtTs(ts){
+  const d = new Date(ts), now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = (today - day) / 86400000;
+  const hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  if(diff === 0) return '今天 · ' + hm;
+  if(diff === 1) return '昨天 · ' + hm;
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' · ' + hm;
+}
+function fmtTsFull(ts){
+  const d = new Date(ts);
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+}
+function fmtTimeFull(ts){
+  const d = new Date(ts);
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── INIT ──
+load();
+renderFlowList();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
