@@ -2,14 +2,15 @@
   "name": "流 · Flow",
   "short_name": "流",
   "description": "用气泡记录你的每一个项目进程",
-  "start_url": "/index.html",
+  "start_url": "/follow/",
+  "scope": "/follow/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "/follow/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
